@@ -1,0 +1,14 @@
+name: timeselector
+title: timeselector
+username:
+account: dgraetz
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 9360791
+bundleId: 7385102
+url: https://dgraetz.shinyapps.io/timeselector/
+when: 1687681024.31778
+lastSyncTime: 1687681024.31778
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: resp32_20220215.14.20.46.txt
