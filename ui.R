@@ -6,11 +6,20 @@ library(DT)
 
 fluidPage(
   
-  titlePanel("Remove timestamps!"),
+  titlePanel("Remove timestamps"),
   
   fluidRow(
-    column(2,
-           selectInput("data_type", "Select Data to download", choices = c("raw breathing [specific]", "time series [generic]"))
+    column(10,
+           p("Go through the data and click to the left and right of an area you would 
+      like to remove. Click remove to record the index values of that area. Download
+      a table defining the removed areas for further data processing. Check the 
+      help tab for further details.")
+    )
+  ),
+  
+  fluidRow(
+    column(2, offset = 1,
+           selectInput("data_type", "Select Data type", choices = c("raw breathing [specific]", "time series [generic]"))
     ),
     column(2,
            fileInput("file", "Upload raw respiration file...")
@@ -21,7 +30,7 @@ fluidPage(
     column(2,
            selectInput("group_col", "Select grouping variable", choices = c("Please wait..."))
     ),
-    column(2, offset = 5,
+    column(2, offset = 1,
            textOutput("Nremoved"),
            textOutput("Nvalues"),
            div(style = "margin-top:10px"),
@@ -82,9 +91,10 @@ fluidPage(
                                 )
                        ),
                        tabPanel("Help",
-                                br(),
-                                p(
-                                  "This App reads in your file and helps you 
+                                column(7,
+                                       br(),
+                                       p(
+                                         "This App reads in your file and helps you 
                                   look through the time series and remove noisy data. 
                                   To do that, simply upload your data and then scroll
                                   through the plot. When you find an area you would like
@@ -92,31 +102,52 @@ fluidPage(
                                   and a second time at the end of the area. Alternatively,
                                   you can enter index values into the 'from' and 'to' fields.
                                   The selection will now turn red. To 'remove' this part of
-                                  the data, click 'Remove'. Keep in mind that the data
-                                  actually remains unchanged, but you can save the areas you selected
-                                  by clicking 'Save'."),
-                                p(
-                                  strong("File to upload:"),
-                                  "Currently, this app is tailored to a very specific file format. In future,
+                                  the data, click 'Remove'. Keep in mind that the data itself
+                                  will actually remain unchanged - you can save the areas you selected
+                                  by clicking 'Save'.
+                                  No x axis will be used from the data for plotting, just index values.
+                                  Please take this into account if you previously removed rows from your data 
+                                  or if spacing between data points varies and is important."),
+                                  p(
+                                    strong("Data Type"),
+                                    "For users who work with consistently formatted data files, use the generic
+                                  time series mode. Your data will be read in with the rio::import() function.
+                                  This packages typically handles tab delimited files, csv files, Rdata and RDS
+                                  files pretty well. You can upload a simple vector as well as long as it is defined
+                                  in an RDS or Rdata file or in new rows in a csv or txt file."
+                                  ),
+                                  p(
+                                    strong("Select column:"),
+                                    "Select the column that contains the time series (in other words, the y value of
+                                  the data). No x axis will be used from the data, just index values will be used.
+                                  Please take this into account if you previously removed rows from your data."
+                                  ),
+                                  p(
+                                    strong("Select grouping variable"),
+                                    "Choose a column here if you have defined groups of data. These will not be displayed
+                                  with different colors, but as separate lines. This is the variable that goes into the 
+                                  ggplot group aesthetics argument."
+                                  ),
+                                  p(
+                                    strong("File to upload:"),
+                                    "Currently, this app is tailored to a very specific file format. In future,
                                   this app will generalize to a variety of inputs. A demo file can be downloaded
                                   by clicking the download button before anything is uploaded (you may need to
                                   restart the app now). This demo file can then be uploaded and should work."
-                                ),
-                                p(
-                                  strong("Remove:"), 
-                                  "Once you hit 'Remove', the start and end point 
+                                  ),
+                                  p(
+                                    strong("Remove:"), 
+                                    "Once you hit 'Remove', the start and end point 
                                   of the area will be recorded as index values (see the table tab)."), 
-                                p(
-                                  strong("Download:"),
-                                  "Once you hit 'Download', the table will be saved as a tab delimited text file.
+                                  p(
+                                    strong("Download:"),
+                                    "Once you hit 'Download', the table will be saved as a tab delimited text file.
                                   Data will not be removed from the actual file. You will need to do that in 
                                   a separate step. You may want to name the file like the input file, with some
                                   extension.")
+                                )
                        )
            )
     )
   )
 )
-
-
-
