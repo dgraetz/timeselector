@@ -57,6 +57,20 @@ shinyServer(
       click$tb <- data.frame(x = c(0,0), y = c(0,0)) #reset to 0
     })
     
+    observeEvent(input$reset_all, { #if reset button pressed
+      if (is.null(data$d)){return(NULL)}
+      click$tb <- data.frame(x = c(0,0), y = c(0,0)) #reset to 0
+      removed_rows$rem <- data.frame(from = double(),
+                 to = double())
+      data$d$no_groups <- 1 
+      data$d <- data$d %>% 
+        mutate(dontPlot = 0, 
+               idx = 1:n(), 
+               cut_marker = NA,
+               filled_groups = NA) 
+      data$d$cut_marker[1] <- 1
+    })
+    
     observeEvent(input$remove, { #if remove button pressed
       if (is.null(data$d)){return(NULL)}
       if (nrow(click$tb) == 2 & click$tb$x[1] != click$tb$x[2] & click$tb$x[1] != 0 & click$tb$x[2] != 0){ #we only perform an action if we have two rows in the column, the x values from and to are not the same and the values are not 0
@@ -220,12 +234,23 @@ shinyServer(
     }
     )
     
-    #preps download
-    output$download <- downloadHandler(
+    
+    #demo data download
+    output$downloadDemo <- downloadHandler(
+      filename = function() {
+        paste0("Demo.txt")
+      },
+      content = function(file) {
+        writeLines(readLines("resp20_20220126.17.49.41.txt"), file)
+      }
+    )
+    
+    #index table download
+    output$downloadRemovedRows <- downloadHandler(
       filename = function() {
         paste0("removed_indices_", format(Sys.time(), "%Y_%m_%d_%H_%M_%S"), ".txt")
       },
-      content = function(file) { #I'd like to have two download buttons, but have yet to figure this out
+      content = function(file) { 
         if (is.null(data$d)){ #if no data is uploaded by user yet, download an example file
           writeLines(readLines("resp20_20220126.17.49.41.txt"), file)
         } else { #else write actual removed areas and sort by start of area.
@@ -233,6 +258,37 @@ shinyServer(
             arrange(from) %>%
             write.table(file, row.names = FALSE)
         }
+      }
+    )
+    
+    #modified data download
+    output$downloadData <- downloadHandler(
+      filename = function() {
+        paste0("data_mod_", format(Sys.time(), "%Y_%m_%d_%H_%M_%S"), ".txt")
+      },
+      content = function(file) { #I'd like to have two download buttons, but have yet to figure this out
+        
+        if (nrow(removed_rows$rem) >= 1){
+          rows <- vector()
+          for(i in 1:nrow(removed_rows$rem)){
+            rows <- append(rows, removed_rows$rem$from[i]:removed_rows$rem$to[i])
+          }
+          download <- data$d %>%
+            filter(!row_number() %in% rows)
+        } else {
+          download <- data$d
+        }
+        
+        download %>%
+          
+          select(-no_groups,
+                 -dontPlot, 
+                 -idx, 
+                 -cut_marker,
+                 -filled_groups,
+                 -group) %>%
+          write.table(file, row.names = FALSE)
+        
       }
     )
     

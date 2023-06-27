@@ -12,9 +12,11 @@ fluidPage(
     column(10,
            p("Go through the data and click to the left and right of an area you would 
       like to remove. Click remove to record the index values of that area. Download
-      a table defining the removed areas for further data processing. Check the 
-      help tab for further details.")
-    )
+      a table defining the removed areas for further data processing or modified data.
+      Check the help tab for further details.")
+    ),
+    column(2,
+           downloadButton("downloadDemo", "Download Demo Data [raw]..."))
   ),
   
   fluidRow(
@@ -22,7 +24,7 @@ fluidPage(
            selectInput("data_type", "Select Data type", choices = c("raw breathing [specific]", "time series [generic]"))
     ),
     column(2,
-           fileInput("file", "Upload raw respiration file...")
+           fileInput("file", "Upload time series...")
     ),
     column(2, 
            selectInput("ts_col", "Select column", choices = c("Please wait..."))
@@ -33,8 +35,7 @@ fluidPage(
     column(2, offset = 1,
            textOutput("Nremoved"),
            textOutput("Nvalues"),
-           div(style = "margin-top:10px"),
-           downloadButton("download", "Download...")
+           div(style = "margin-top:10px")
     )
   ),
   
@@ -76,9 +77,14 @@ fluidPage(
                                          numericInput("to", "to", value = 0),
                                          actionButton("reset", "Reset", class = "btn-default"),
                                          div(style = "margin-top:10px"),
+                                         actionButton("reset_all", "Reset all", class = "btn-default"),
+                                         div(style = "margin-top:10px"),
                                          actionButton("undo", "Undo", class = "btn-default"),
                                          div(style = "margin-top:10px"),
-                                         actionButton("remove", "Remove", class = "btn-danger")
+                                         actionButton("remove", "Remove", class = "btn-danger"),
+                                         div(style = "margin-top:40px"),
+                                         downloadButton("downloadRemovedRows", "Download Indices..."),
+                                         downloadButton("downloadData", "Download modified Data...")
                                   ),
                                 ),
                                 
@@ -104,12 +110,23 @@ fluidPage(
                                   The selection will now turn red. To 'remove' this part of
                                   the data, click 'Remove'. Keep in mind that the data itself
                                   will actually remain unchanged - you can save the areas you selected
-                                  by clicking 'Save'.
+                                  by clicking 'Download indices' or 'Download modified Data'.
                                   No x axis will be used from the data for plotting, just index values.
                                   Please take this into account if you previously removed rows from your data 
-                                  or if spacing between data points varies and is important."),
+                                  or if spacing between data points varies and is important.
+                                  This app can get slow if your data is large, because of plotting speed.
+                                  I found that installing the 'AGG' plotting device makes this app considerably
+                                  faster, see https://stackoverflow.com/questions/63795842/slow-graph-rendering-with-ggplot2-rstudio-gpu-issue"),
                                   p(
-                                    strong("Data Type"),
+                                    strong("Download Demo Data:"),
+                                    "This will provide you with a raw respiration data file that was
+                                    collected in our lab. The formatting is pretty specific, but you can
+                                    upload it with the Data Type = raw and column = 'sensor' setting to try this app. Don't
+                                    worry about the formatting of your files, though, the generic 'Data Type' 
+                                    setting should be able to handle most file formats." 
+                                  ),
+                                  p(
+                                    strong("Data Type:"),
                                     "For users who work with consistently formatted data files, use the generic
                                   time series mode. Your data will be read in with the rio::import() function.
                                   This packages typically handles tab delimited files, csv files, Rdata and RDS
@@ -140,11 +157,25 @@ fluidPage(
                                     "Once you hit 'Remove', the start and end point 
                                   of the area will be recorded as index values (see the table tab)."), 
                                   p(
-                                    strong("Download:"),
-                                    "Once you hit 'Download', the table will be saved as a tab delimited text file.
-                                  Data will not be removed from the actual file. You will need to do that in 
-                                  a separate step. You may want to name the file like the input file, with some
-                                  extension.")
+                                    strong("Reset:"),
+                                    "This will reset the current selection to 0."
+                                  ),
+                                  p(
+                                    strong("Reset all:"),
+                                    "This will reset all selections made so far."
+                                  ),
+                                  p(
+                                    strong("Download Indices:"),
+                                    "Once you hit this button, the table from the table tab will be saved as 
+                                    a tab delimited text file. Data will not be removed from the actual file.
+                                    You will need to do that in a separate step. You may want to name the file 
+                                    like the input file (with some change in the name to prevent overwriting."),
+                                  p(
+                                    strong("Download mdoified Data:"),
+                                    "The rows of the data you indicated in this app will be removed and provided for
+                                    download. The formatting of your file may differ from your original input. It will be
+                                    saved with 'write.table().'"
+                                  )
                                 )
                        )
            )
