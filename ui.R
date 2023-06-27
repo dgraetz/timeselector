@@ -1,6 +1,5 @@
 #TODO:
 # - option to download modified data frame
-# - accept more file types and be able to select column(s) to plot
 
 library(shinyWidgets)
 library(DT)
@@ -10,13 +9,25 @@ fluidPage(
   titlePanel("Remove timestamps!"),
   
   fluidRow(
-    column(5,
-           fileInput("file", "Upload raw respiration file...")), 
+    column(2,
+           selectInput("data_type", "Select Data to download", choices = c("raw breathing [specific]", "time series [generic]"))
+    ),
+    column(2,
+           fileInput("file", "Upload raw respiration file...")
+    ),
+    column(2, 
+           selectInput("ts_col", "Select column", choices = c("Please wait..."))
+    ),
+    column(2,
+           selectInput("group_col", "Select grouping variable", choices = c("Please wait..."))
+    ),
     column(2, offset = 5,
            textOutput("Nremoved"),
            textOutput("Nvalues"),
            div(style = "margin-top:10px"),
-           downloadButton("download", "Download..."))),
+           downloadButton("download", "Download...")
+    )
+  ),
   
   fluidRow(
     column(11, offset = 1, 
@@ -32,7 +43,8 @@ fluidPage(
                                            orientation = "vertical",
                                            height = "350px",
                                            direction = "rtl",
-                                         )),
+                                         )
+                                  ),
                                   column(9, 
                                          div(style='width:100%; overflow-x: scroll; height:400px; overflow-y: scroll', 
                                              plotOutput("output_plot", 
@@ -55,7 +67,7 @@ fluidPage(
                                          numericInput("to", "to", value = 0),
                                          actionButton("reset", "Reset", class = "btn-default"),
                                          div(style = "margin-top:10px"),
-                                         actionButton("back", "Undo", class = "btn-default"),
+                                         actionButton("undo", "Undo", class = "btn-default"),
                                          div(style = "margin-top:10px"),
                                          actionButton("remove", "Remove", class = "btn-danger")
                                   ),
@@ -99,7 +111,8 @@ fluidPage(
                                   "Once you hit 'Download', the table will be saved as a tab delimited text file.
                                   Data will not be removed from the actual file. You will need to do that in 
                                   a separate step. You may want to name the file like the input file, with some
-                                  extension."))
+                                  extension.")
+                       )
            )
     )
   )
