@@ -3,6 +3,9 @@ library(shinyWidgets)
 library(tidyverse)
 library(DT)
 library(rio)
+library(viridis)
+
+colors <- viridis(5)
 options(scipen = 999)
 
 counter <- 1
@@ -13,7 +16,7 @@ shinyServer(
     
     data <- reactiveValues(d = NULL)
     
-    observeEvent(input$file, { #if file is being uploaded
+    observeEvent(input$file, { #if time series is being uploaded
       
       if (input$data_type == "raw breathing [specific]"){ #this is for lab internal respiration files, which require specific formatting if raw
         
@@ -29,7 +32,18 @@ shinyServer(
       }
       
       data$d$no_groups <- 1 #this will help with data that is grouped (such as blocks in an experiment)
-      updateSelectInput(session, "ts_col", choices = colnames(data$d)) #here we update columns with column names
+      
+      if (input$data_type == "raw breathing [specific]"){
+        
+        #updateSelectInput(session, "ts_col", choices = c("sensor", colnames(data$d %>% select(-sensor)))) #default = sensor, here we update columns with column names
+        updateCheckboxGroupInput(session, "ts_col", choices = c("sensor", colnames(data$d %>% select(-sensor)))) #default = sensor, here we update columns with column names
+        
+      } else if (input$data_type == "time series [generic]"){
+        
+        updateCheckboxGroupInput(session, "ts_col", choices = colnames(data$d)) #here we update columns with column names
+        
+      }
+      
       updateSelectInput(session, "group_col", choices = c("no_groups", colnames(data$d %>% select(-no_groups)))) #this is for groups that may be present in the data set, i. e., experimental blocks. This will plot those lines separately. By default, no groups will be used (hence the code that puts no_groups first)
       
       data$d <- data$d %>% 
@@ -51,6 +65,13 @@ shinyServer(
     removed_rows <- reactiveValues(rem = data.frame(from = double(),
                                                     to = double()))
     
+    observeEvent(input$indices, { #if index from previous work is uploaded
+      
+      removed_rows$rem <- import(input$indices$datapath)
+      
+    }
+    )
+    
     
     observeEvent(input$reset, { #if reset button pressed
       if (is.null(data$d)){return(NULL)}
@@ -61,7 +82,7 @@ shinyServer(
       if (is.null(data$d)){return(NULL)}
       click$tb <- data.frame(x = c(0,0), y = c(0,0)) #reset to 0
       removed_rows$rem <- data.frame(from = double(),
-                 to = double())
+                                     to = double())
       data$d$no_groups <- 1 
       data$d <- data$d %>% 
         mutate(dontPlot = 0, 
@@ -102,26 +123,41 @@ shinyServer(
       
     })
     
-    observeEvent(input$plot_click, {
+    observeEvent(input$plot_click, { #if click
       if (is.null(data$d)){return(NULL)}
+      
+      x <- round(input$plot_click$x)
+      y <- round(input$plot_click$y)
       click$tb <- #this pipe stolen from https://stackoverflow.com/questions/75953789/shiny-get-x-y-axis-locations-from-a-plot-from-multiple-clicks
         isolate(click$tb) %>% 
         add_row(
-          x = round(input$plot_click$x),
-          y = round(input$plot_click$y)
+          x = x,
+          y = y
         )
       
-      if (nrow(click$tb) == 3){ #at the third click and when no removal happened, just reset it, keep the last click and be ready for next click
-        click$tb <- click$tb[3,]
-      }
-      
-      if (nrow(click$tb) == 1){
-        updateNumericInput(session, "from", value = click$tb$x[1]) #update the input with the x values (this is sort of a feedback loop. For the actual plot, the numeric fields are used, and these numbers can come from clicks or manual input)
-      }
-      
-      if (nrow(click$tb) == 2){
+      if (nrow(removed_rows$rem) >= 1 & any(x > removed_rows$rem$from & x < removed_rows$rem$to)){
+        
+        removed_rows$rem <- removed_rows$rem[-which(x > removed_rows$rem$from & x < removed_rows$rem$to),]
+        click$tb <- data.frame(x = c(0,0), y = c(0,0))
+        updateNumericInput(session, "from", value = click$tb$x[1])
         updateNumericInput(session, "to", value = click$tb$x[2])
+        
+      } else {
+        
+        if (nrow(click$tb) == 3){ #at the third click and when no removal happened, just reset it, keep the last click and be ready for next click
+          click$tb <- click$tb[3,]
+        }
+        
+        if (nrow(click$tb) == 1){
+          updateNumericInput(session, "from", value = click$tb$x[1]) #update the input with the x values (this is sort of a feedback loop. For the actual plot, the numeric fields are used, and these numbers can come from clicks or manual input)
+        }
+        
+        if (nrow(click$tb) == 2){
+          updateNumericInput(session, "to", value = click$tb$x[2])
+        }
       }
+      
+      
     })
     
     observeEvent(input$from, {
@@ -144,46 +180,53 @@ shinyServer(
     
     
     output$output_plot <- renderPlot({
-      if (is.null(data$d)){return(NULL)}
+      if (is.null(data$d)|is.null(input$ts_col)){return(NULL)}
       
       #the following lines of code transfer the group start markers over to filled_groups which is then filled downwards. This is a way to implement groups that are not dependent on the order that the areas are marked
-      data$d <- data$d %>% 
-        mutate(filled_groups = cut_marker) %>%
-        fill(filled_groups) 
-      
+      # We don't do this anymore, we just change the background and not remove data from the plot, hence this is not necessary anymore
+      # data$d <- data$d %>%
+      #   mutate(filled_groups = cut_marker) %>%
+      #   fill(filled_groups)
+
       data$d$group <- interaction(data$d[,"filled_groups"], data$d[,input$group_col]) #this integrates the user input about dataset groups with the groups resulting from removing data
-      
-      #gg <- ggplot(data = data$d[data$d$dontPlot == 0,], aes(x = idx, y = sensor))
-      
-      gg <- ggplot(data = data$d[data$d$dontPlot == 0,], aes_string(x = "idx", y = input$ts_col)) #build basic df
-      
+
+      gg <- ggplot(data = data$d, aes_string(x = "idx")) #build basic df
+
       if (nrow(removed_rows$rem) >= 1){
         gg <- gg +
           annotate("rect", xmin = removed_rows$rem$from, xmax = removed_rows$rem$to, ymin = -Inf, ymax = Inf, fill = "lightgrey") #this shows all removed data in grey
       }
-      
+
       if (nrow(click$tb) == 2 & (click$tb$x[1] != 0 | click$tb$x[2] != 0)) {
-        
-        gg <- gg + 
+
+        gg <- gg +
           annotate("rect", xmin = click$tb$x[1], xmax = click$tb$x[2], ymin = -Inf, ymax = Inf, fill="red") #currently active area in red
       }
-      
-      gg <- gg + 
-        geom_line(aes(group = group))
-      
-      if (click$tb$x[1] != 0 | click$tb$x[2] != 0) { #ignore default; this marks the start and end of area
-        
+
+      col_vals <- seq(1, length(colors), length.out = length(input$ts_col)) #equally spaced columns
+
+      for(i in 1:length(input$ts_col)){
+
         gg <- gg +
-          geom_vline(data = click$tb, aes(xintercept = x), color = "red") 
-        
+          #geom_line(aes_string(y = input$ts_col[i], group = "group"), color = colors[col_vals[i]]) #not sure i like those colors
+          geom_line(aes_string(y = input$ts_col[i], group = "group"))
+
       }
-      
+
+      if (click$tb$x[1] != 0 | click$tb$x[2] != 0) { #ignore default; this marks the start and end of area
+
+        gg <- gg +
+          geom_vline(data = click$tb, aes(xintercept = x), color = "red")
+
+      }
+
       gg <- gg +
         labs(x = "",
              y = "") +
         theme_classic()
-      
+
       gg
+      
       
     }, 
     
@@ -291,6 +334,10 @@ shinyServer(
         
       }
     )
+    
+    session$onSessionEnded(function() {
+      stopApp()
+    })
     
   }
 )
