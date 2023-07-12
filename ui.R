@@ -1,7 +1,3 @@
-#TODO:
-# - Show multiple columns
-# - legend for multiple lines
-
 library(shinyWidgets)
 library(DT)
 
@@ -60,6 +56,17 @@ fluidPage(
                                          )
                                   ),
                                   column(9, 
+                                         fluidRow(
+                                           column(1, 
+                                                  actionButton("left", "<<", class = "btn-default")
+                                           ),
+                                           column(2, offset = 4,
+                                                  textOutput("chunk_idx")
+                                           ),
+                                           column(1, offset = 3, 
+                                                  actionButton("right", ">>", class = "btn-default"),
+                                           ),
+                                         ),
                                          div(style='width:100%; overflow-x: scroll; height:400px; overflow-y: scroll', 
                                              plotOutput("output_plot", 
                                                         click = "plot_click")),

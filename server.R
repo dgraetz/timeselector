@@ -14,6 +14,7 @@ shinyServer(
   
   function(input, session, output){
     
+    current_chunk <- reactiveValues(chunk = NULL)
     data <- reactiveValues(d = NULL)
     
     observeEvent(input$file, { #if time series is being uploaded
@@ -46,6 +47,23 @@ shinyServer(
       
       updateSelectInput(session, "group_col", choices = c("no_groups", colnames(data$d %>% select(-no_groups)))) #this is for groups that may be present in the data set, i. e., experimental blocks. This will plot those lines separately. By default, no groups will be used (hence the code that puts no_groups first)
       
+      data$d$chunk <- NA
+      chunk_size <- 30000
+      n_obs <- nrow(data$d)
+      n_chunks <- floor(n_obs/chunk_size)
+      actual_chunk_size <- floor(n_obs/n_chunks)
+      
+      if (n_chunks > 2){
+        data$d$chunk[(1:(n_chunks))*actual_chunk_size] <- 1:(n_chunks)
+        
+      } else {
+        data$d$chunk[nrow(data$d)] <- 1
+      }
+      
+      data$d <- data$d %>%
+        fill(chunk, .direction = "up")
+      
+      
       data$d <- data$d %>% 
         mutate(dontPlot = 0, #this gets updated later and marks the rows not to be plotted (the ones cut out)
                idx = 1:n(), #this is for the x axis
@@ -53,8 +71,40 @@ shinyServer(
                filled_groups = NA) #this variable filled from top to bottom --> this is so that the lines before and after cut are not connected
       
       data$d$cut_marker[1] <- 1
+      current_chunk$chunk <- 1
+      current_chunk$max_chunk <- if (n_chunks == 0) {
+        1
+      }
+      else {
+        n_chunks
+      }
       
       
+    })
+    
+    observeEvent(input$left, {
+      
+      if (current_chunk$chunk - 1 <= 1){
+        current_chunk$chunk <- 1
+      } else {
+        current_chunk$chunk <- current_chunk$chunk - 1
+      }
+      
+    })
+    
+    observeEvent(input$right, {
+      
+      if (current_chunk$chunk + 1 > current_chunk$max_chunk){
+        current_chunk$chunk <- current_chunk$max_chunk
+      } else {
+        current_chunk$chunk <- current_chunk$chunk + 1
+      }
+      
+    })
+    
+    output$chunk_idx <- renderText({
+      if (is.null(data$d)){return(NULL)}
+      paste0("Page ", current_chunk$chunk, " of ", current_chunk$max_chunk,".")
     })
     
     #this will contain clicks. By default, 0, 0
@@ -187,46 +237,50 @@ shinyServer(
       # data$d <- data$d %>%
       #   mutate(filled_groups = cut_marker) %>%
       #   fill(filled_groups)
-
+      
       data$d$group <- interaction(data$d[,"filled_groups"], data$d[,input$group_col]) #this integrates the user input about dataset groups with the groups resulting from removing data
-
-      gg <- ggplot(data = data$d, aes_string(x = "idx")) #build basic df
-
+      
+      chunk_from <- data$d$idx[min(which(data$d$chunk == current_chunk$chunk))] - 500 #overlap
+      chunk_to <- data$d$idx[max(which(data$d$chunk == current_chunk$chunk))] + 500
+      
+      gg <- ggplot(data = data$d[data$d$idx > chunk_from & data$d$idx < chunk_to,], aes_string(x = "idx")) #build basic df
+      
       if (nrow(removed_rows$rem) >= 1){
         gg <- gg +
           annotate("rect", xmin = removed_rows$rem$from, xmax = removed_rows$rem$to, ymin = -Inf, ymax = Inf, fill = "lightgrey") #this shows all removed data in grey
       }
-
+      
       if (nrow(click$tb) == 2 & (click$tb$x[1] != 0 | click$tb$x[2] != 0)) {
-
+        
         gg <- gg +
           annotate("rect", xmin = click$tb$x[1], xmax = click$tb$x[2], ymin = -Inf, ymax = Inf, fill="red") #currently active area in red
       }
-
+      
       col_vals <- seq(1, length(colors), length.out = length(input$ts_col)) #equally spaced columns
-
+      
       for(i in 1:length(input$ts_col)){
-
+        
         gg <- gg +
           #geom_line(aes_string(y = input$ts_col[i], group = "group"), color = colors[col_vals[i]]) #not sure i like those colors
           geom_line(aes_string(y = input$ts_col[i], group = "group"))
-
+        
       }
-
+      
       if (click$tb$x[1] != 0 | click$tb$x[2] != 0) { #ignore default; this marks the start and end of area
-
+        
         gg <- gg +
           geom_vline(data = click$tb, aes(xintercept = x), color = "red")
-
+        
       }
-
+      
       gg <- gg +
         labs(x = "",
              y = "") +
         theme_classic()
-
+      
       gg
       
+      #plot(data)
       
     }, 
     

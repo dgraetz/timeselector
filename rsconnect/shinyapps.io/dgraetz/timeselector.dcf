@@ -5,10 +5,10 @@ account: dgraetz
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 9360791
-bundleId: 7399129
+bundleId: 7449317
 url: https://dgraetz.shinyapps.io/timeselector/
-when: 1687979218.51344
-lastSyncTime: 1687979218.51345
+when: 1689183012.57172
+lastSyncTime: 1689183012.57173
 asMultiple: FALSE
 asStatic: FALSE
-ignoredFiles: resp32_20220215.14.20.46.txt|test.R
+ignoredFiles: resp32_20220215.14.20.46.txt
